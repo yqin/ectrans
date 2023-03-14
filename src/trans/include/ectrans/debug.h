@@ -1,5 +1,5 @@
-!#define BLOCK_PACKING
-!#define BLOCK_UNPACKING
+#define BLOCK_PACKING
+#define BLOCK_UNPACKING
 #define DUMP_STDERR
 
 #ifdef DUMP_STDERR

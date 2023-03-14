@@ -32,7 +32,8 @@ fi
 SMALL=1279
 MEDIUM=2559
 LARGE=3839
-ITER=1
+CHECK=1
+ITER=100
 LEVEL=137
 NPROMA=32
 PRECISION="sp"
@@ -59,7 +60,7 @@ MPIRUN_CMD="\
         -mca pml ucx \
             -x UCX_NET_DEVICES=mlx5_0:1 \
             -x UCX_LOG_LEVEL=error \
-        ectrans-benchmark-$PRECISION -t $SMALL -n $ITER -l $LEVEL --vordiv --scders --uvders --nproma $NPROMA --norms $MEMINFO
+        ectrans-benchmark-$PRECISION -t $SMALL -c 100 -n $ITER -l $LEVEL --vordiv --scders --uvders --nproma $NPROMA --norms $MEMINFO
 "
 
 # Report

@@ -415,7 +415,7 @@ INTEGER(KIND=JPIM), ALLOCATABLE :: IPATTERNS(:,:), IPATTERNR(:,:)
 INTEGER(KIND=JPIM) :: IOFFSET, IENDOFPATTERNS, IENDOFPATTERNR
 CHARACTER(LEN=21) :: FILENAMES, FILENAMER
 ! 0 to debug all ranks, n to debug a specific rank, -1 to disable dubugging
-INTEGER(KIND=JPIM) :: OPROC = 0
+INTEGER(KIND=JPIM) :: OPROC = -1
 
 !     ------------------------------------------------------------------
 
