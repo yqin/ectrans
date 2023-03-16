@@ -33,14 +33,17 @@ def grep_sarray(module, proc, bufname, filename):
     return values
 
 
-def process(module, mode, source, destination):
+def process(module, mode, block, source, destination):
     """
     Process data pattern file
     Input:
         module:         TRGTOL or TRLTOG module to process
         mode:           send or receive mode to process
+        block:          contiguous ppn block
         source:         source process
         destination:    destination process
+    Output:
+        None
     """
     # run.log
     rfilename = "run.log"
@@ -89,17 +92,30 @@ def process(module, mode, source, destination):
     pfile = FortranFile(pfilename,'r')
     pdata = pfile.read_ints()
     pfile.close()
-    pdata = pdata.reshape((len(pdata) // columns, columns))
+    pdata = pdata.reshape(pdata.size // columns, columns)
 
     print("Summary:")
     print("  pattern file: %s" % pfilename)
     print("  pattern sample line: %s" % pdata[0])
+    # how many peers for this source process
+    peers = np.unique(pdata[:,0])
+    npeers = peers.size
+    # node that source process is on
+    source_node = -(-source // block)
+    # nodes that all peer processes are on
+    peers_node = -(-peers // block)
+    npeers_node = np.unique(peers_node).size
+    # intra-node communications
+    intra_node = np.isin(peers_node, source_node)
+    perc_intra_node = np.count_nonzero(peers_node == source_node) / npeers
     if mode == "s":
-        print("  process %d send to %d destinations: %s" %
-            (source, len(np.unique(pdata[:,0])), np.unique(pdata[:,0])))
+        print("  process %d (node %d) send to %d destinations (%d nodes %s, %.2f%% intra-node): %s" %
+            (source, source_node, npeers, npeers_node, np.unique(peers_node),
+            perc_intra_node * 100., peers))
     else:
-        print("  process %d receive from %d destinations: %s" %
-            (source, len(np.unique(pdata[:,0])), np.unique(pdata[:,0])))
+        print("  process %d (node %d) receive from %d destinations (%d nodes %s, %.2f%% intra-node): %s" %
+            (source, source_node, npeers, npeers_node, np.unique(peers_node),
+            perc_intra_node * 100., peers))
 
     print("  user buffers used (shape):")
     for i in np.unique(pdata[:,carray]):
@@ -125,7 +141,8 @@ def process(module, mode, source, destination):
                 grep_sarray(module.upper(), source, parray[i].upper(), rfilename)))
 
     unique, counts = np.unique(pdata[:,carray1end]-pdata[:,carray1start]+1, return_counts=True)
-    print("  user buffer block size and count: %s" % ([(unique[i], counts[i]) for i in range(len(unique))]))
+    print("  user buffer block size and count: %s" % ([(unique[i], counts[i]) for i in range(unique.size)]))
+    print("  total data size: %d" % np.dot(unique, counts))
 
     #print("data source array 2nd-dim: %d %s" % (len(np.unique(pdata[:,6])), np.unique(pdata[:,6])))
     #print("data source array 3rd-dim: %d %s" % (len(np.unique(pdata[:,7])), np.unique(pdata[:,7])))
@@ -156,7 +173,8 @@ def process(module, mode, source, destination):
                 print("    %s [%d, %d]" % ((i, parray[i]), sarray1, sarray2))
 
         unique, counts = np.unique(pdata[:,carray1end]-pdata[:,carray1start]+1, return_counts=True)
-        print("  user buffer block size and count: %s" % ([(unique[i], counts[i]) for i in range(len(unique))]))
+        print("  user buffer block size and count: %s" % ([(unique[i], counts[i]) for i in range(unique.size)]))
+        print("  total data size: %d" % np.dot(unique, counts))
         print(pdata)
 
 
@@ -170,6 +188,7 @@ def usage(name):
         None
     """
     print("Usage: " + name + " [options]")
+    print("     -b, --block <PPN>       contiguous PPN block to determine node")
     print("     -d, --detail            detail output")
     print("     -g, --gtol              TRGTOL module")
     print("     -h, --help              help page")
@@ -186,13 +205,14 @@ def main(name, argv):
     # default configurations
     module = "gtol"
     mode = "s"
+    block = 16
     source = 401
     destination = 414
     np.set_printoptions(linewidth=np.inf)
 
     # parse command line options
     try:
-        opts, args = getopt.getopt(argv, "dghlp:rs", ["procs="])
+        opts, args = getopt.getopt(argv, "b:dghlp:rs", ["block=", "procs="])
     except getopt.GetoptError:
         print("invalid option: ", argv)
         usage(name)
@@ -202,6 +222,8 @@ def main(name, argv):
         if opt in ["-h", "--help"]:
             usage(name)
             exit(0)
+        elif opt in ["-b", "--block"]:
+            block = int(val)
         elif opt in ["-d", "--detail"]:
             np.set_printoptions(linewidth=np.inf, threshold=np.inf)
         elif opt in ["-g", "--gtol"]:
@@ -223,7 +245,7 @@ def main(name, argv):
         print("source or destination process out of range")
         exit(-1)
 
-    process(module, mode, source, destination)
+    process(module, mode, block, source, destination)
 
 
 if __name__ == '__main__': 
