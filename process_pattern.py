@@ -5,8 +5,8 @@
 # This program processes data patterns from ECTRANS TRGTOL and TRLTOG modules.
 # Raw data is obtained from running ECTRANS with data pattern collection patch,
 # e.g.,
-#   mpirun -np 512 ectrans-benchmark-sp -t 1279 -n 1 -l 137 --vordiv --scders 
-#       --uvders --nproma 32 --norms 2>&1 | tee run.log
+#   mpirun -np 512 ectrans-benchmark-sp -t 1279 -n 1 -l 137 --vordiv --scders
+#       --uvders --nproma 32 --nprtrv 4 --norms 2>&1 | tee run.log
 #
 # Author: Yong Qin (yongq@nvidia.com)
 # Version: 0.1 (Mar 9, 2023)
@@ -248,5 +248,5 @@ def main(name, argv):
     process(module, mode, block, source, destination)
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     main(sys.argv[0], sys.argv[1:])

@@ -296,7 +296,7 @@ if (nprtrv > 0 .or. nprtrw > 0) then
   if (nprtrv == 0) nprtrv = nproc/nprtrw
   if (nprtrw == 0) nprtrw = nproc/nprtrv
   if (nprtrw*nprtrv /= nproc) call abor1('transform_test:nprtrw*nprtrv /= nproc')
-  if (nprtrw > nspecresmin) call abor1('transform_test:nprtrw > nspecresmin')
+  !if (nprtrw > nspecresmin) call abor1('transform_test:nprtrw > nspecresmin')
 else
   do jprtrv = 4, nproc
     nprtrv = jprtrv

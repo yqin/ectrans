@@ -5,10 +5,10 @@ module load gcc/8.3.1 hpcx/2.13.0-mt
 # IPM
 USE_IPM=0
 if [[ $USE_IPM -eq 1 ]]; then
-    export IPM_KEYFILE=$HPCX_IPM_DIR/etc/ipm_key_mpi                             
-    export IPM_REPORT=full                                           
-    export IPM_LOG=full                                              
-    export IPM_STATS=all                                             
+    export IPM_KEYFILE=$HPCX_IPM_DIR/etc/ipm_key_mpi
+    export IPM_REPORT=full
+    export IPM_LOG=full
+    export IPM_STATS=all
     export LD_PRELOAD=$HPCX_IPM_LIB
 fi
 
@@ -33,9 +33,10 @@ SMALL=1279
 MEDIUM=2559
 LARGE=3839
 CHECK=1
-ITER=1
+ITER=100
 LEVEL=137
 NPROMA=32
+NPRTRV=4
 PRECISION="sp"
 #MEMINFO="--meminfo"
 
@@ -53,14 +54,14 @@ else
     PPN=2
 fi
 NP=$((N*PPN))
-MPIRUN_CMD="\
-    mpirun \
-        -np $NP \
-        -map-by ppr:$((PPN/2)):socket \
-        -mca pml ucx \
-            -x UCX_NET_DEVICES=mlx5_0:1 \
-            -x UCX_LOG_LEVEL=error \
-        ectrans-benchmark-$PRECISION -t $SMALL -c 100 -n $ITER -l $LEVEL --vordiv --scders --uvders --nproma $NPROMA --norms $MEMINFO
+MPIRUN_CMD="
+    mpirun
+        -np $NP
+        -map-by ppr:$((PPN/2)):socket
+        -mca pml ucx
+            -x UCX_NET_DEVICES=mlx5_0:1
+            -x UCX_LOG_LEVEL=error
+        ectrans-benchmark-$PRECISION -t $SMALL -c 100 -n $ITER -l $LEVEL --vordiv --scders --uvders --nproma $NPROMA --nprtrv $NPRTRV --norms $MEMINFO
 "
 
 # Report

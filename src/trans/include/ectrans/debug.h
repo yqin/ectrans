@@ -1,6 +1,7 @@
-#define BLOCK_PACKING
-#define BLOCK_UNPACKING
-#define DUMP_STDERR
+!#define COLLECT_DATAPATTERN
+!#define BLOCK_PACKING
+!#define BLOCK_UNPACKING
+!#define DUMP_STDERR
 
 #ifdef DUMP_STDERR
 #define DEBUG_RAW(fun,line,proc,var,val) write(0,'(A,":",I0,"(",I0,"): ",A," = ",I0)') fun,line,proc,var,val
