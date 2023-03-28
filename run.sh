@@ -18,7 +18,7 @@ if [[ $USE_SCOREP -eq 1 ]]; then
     module load ectrans/1.2.0-scorep
     export SCOREP_TIMER=clock_gettime
     export SCOREP_ENABLE_PROFILING=true
-    export SCOREP_ENABLE_TRACING=true
+    export SCOREP_ENABLE_TRACING=false
     export SCOREP_EXPERIMENT_DIRECTORY=scorep
     export SCOREP_PROFILING_MAX_CALLPATH_DEPTH=2048
     #export SCOREP_FILTERING_FILE=$SLURM_SUBMIT_DIR/filter
@@ -71,7 +71,7 @@ echo "Partition: $SLURM_JOB_PARTITION" | tee -a $LOGFILE
 echo "Nodelist : $SLURM_JOB_NODELIST" | tee -a $LOGFILE
 echo "Node #   : $SLURM_JOB_NUM_NODES" | tee -a $LOGFILE
 echo "PPN      : $SLURM_JOB_CPUS_PER_NODE" | tee -a $LOGFILE
-echo "NP       : $((SLURM_JOB_NUM_NODES * SLURM_JOB_CPUS_PER_NODE))" | tee -a $LOGFILE
+echo "NP       : $NP" | tee -a $LOGFILE
 echo "MPIRUN   : "$(echo ${MPIRUN_CMD} | tr -s ' ') | tee -a $LOGFILE
 
 # RUN
