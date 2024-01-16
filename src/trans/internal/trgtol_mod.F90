@@ -35,7 +35,7 @@
 !  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#define SEND_BY_LEVEL
+!#define SEND_BY_LEVEL
 !#define DEBUG
 
 MODULE TRGTOL_MOD
@@ -1299,6 +1299,7 @@ IF(KSENDTOT(MYPROC) > 0 )THEN
 
 ENDIF
 
+
 !  Unpack loop.........................................................
 
 ! Wait for the data and process the receive buffer (remove redundant elements between segments)
@@ -1324,14 +1325,17 @@ DO JNR=1,tot_count
       call flush
 #endif
 12    format(i3,': Waitany loop, count ',i3)
-!      call mpi_waitany(rcount*knrecv,recv_reqs,ind,MPI_STATUS_IGNORE,ierr)
+!      call mpi_waitany(tot_count,recv_reqs,ind,MPI_STATUS_IGNORE,ierr)
 !      call find_source(ind,inr,f,start_recv,knrecv)
-
+!      if(f .gt. kf_fs) then
+!         print *,myproc-1,': Beyong bounds, f=',f, 'ind=',ind,'inr=',inr
+!      endif
+      
       call mpi_wait(recv_reqs(jnr),MPI_STATUS_IGNORE,ierr)
 
       call find_source(jnr,inr,f,start_recv,knrecv)
-
-!      ind = jnr
+!
+      ind = jnr
 !      f = mod(ind-1,rcount) +1   ! Group of fields
 !      inr = (ind-1)/rcount +1 
 
@@ -1361,8 +1365,8 @@ DO JNR=1,tot_count
    close(11)
 #endif
 
-   
    call mpi_waitall(tot_req_id,send_reqs,MPI_STATUSES_IGNORE,ierr)
+   
 
 #ifdef DEBUG_COMM
 s1 = 'pglat.'
@@ -1414,17 +1418,22 @@ subroutine find_source(ind,src,f,ref,n)
   low = 1
   high = n
   conv = .false.
-  do while(low <= high .and. .not. conv)
-     mid = (low + high)/2
-     if(ref(mid) < ind) then
+  do while(low < high .and. .not. conv)
+     mid = (low + high + 1)/2
+     
+     if(ref(mid) <= ind) then
         low = mid
+        if(ref(mid) .eq. ind) then
+           conv = .true.
+        endif
      else if(ref(mid) > ind) then
-        high = mid
+        high = mid - 1
      else
         conv = .true.
      endif
+     
   enddo
-  src = mid
+  src = low
   f = ind - ref(src) +1
   
 end subroutine find_source
