@@ -775,7 +775,7 @@ DO INS=1,KNSEND
       if(jend >= jbeg .and. blocklength(iv,ins) > 0) then
 
   ! Combine 1st and last dimensions of the array (PGPUV etc) into a single dimension (horizontal data), for one level (include some extra elements, that will be subtracted on the receiving side)
-#ifdef SEND_BY_LEVELS
+#ifdef SEND_BY_LEVEL
          call mpi_type_vector(jend - jbeg+1,dims(1,iv),dims(1,iv)*dims(2,iv)*dims(3,iv),prec,sendtype(iv,ins),ierr)
          typesz(iv,ins) = nproma * (jend-jbeg+1)
 #else
@@ -1325,17 +1325,17 @@ DO JNR=1,tot_count
       call flush
 #endif
 12    format(i3,': Waitany loop, count ',i3)
-!      call mpi_waitany(tot_count,recv_reqs,ind,MPI_STATUS_IGNORE,ierr)
-!      call find_source(ind,inr,f,start_recv,knrecv)
+      call mpi_waitany(tot_count,recv_reqs,ind,MPI_STATUS_IGNORE,ierr)
+      call find_source(ind,inr,f,start_recv,knrecv)
 !      if(f .gt. kf_fs) then
 !         print *,myproc-1,': Beyong bounds, f=',f, 'ind=',ind,'inr=',inr
 !      endif
       
-      call mpi_wait(recv_reqs(jnr),MPI_STATUS_IGNORE,ierr)
+!      call mpi_wait(recv_reqs(jnr),MPI_STATUS_IGNORE,ierr)
 
-      call find_source(jnr,inr,f,start_recv,knrecv)
+!      call find_source(jnr,inr,f,start_recv,knrecv)
 !
-      ind = jnr
+!      ind = jnr
 !      f = mod(ind-1,rcount) +1   ! Group of fields
 !      inr = (ind-1)/rcount +1 
 
