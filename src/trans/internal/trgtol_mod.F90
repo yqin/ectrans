@@ -37,6 +37,7 @@
 
 !#define SEND_BY_LEVEL
 !#define DEBUG
+!#define DEBUG_COMM
 
 MODULE TRGTOL_MOD
 
@@ -45,7 +46,7 @@ PRIVATE TRGTOL_PROLOG, TRGTOL_COMM, TRGTOL_INIT
 
 !============================================================================
 integer, allocatable :: sendtype(:,:)   ! MPI Datatype for sending 
-integer, allocatable :: Dhor(:)  ! Number of elements in horizontal dimension for each neighbor 
+!integer, allocatable :: Dhor(:)  ! Number of elements in horizontal dimension for each neighbor 
 integer, allocatable :: seg(:,:) ! beginning and ending element (for cases where there is padding)
 integer :: max_tot  ! Maximum total number of fields received
 integer :: tot_count ! Total number of received messages
@@ -61,6 +62,7 @@ integer, allocatable :: blocklength(:,:) ! Number of fields in send space
 #ifndef SEND_BY_LEVEL
 integer, allocatable :: num_fld(:,:) ! Number of fields per neighbor
 integer, allocatable :: fstart(:,:) ! Starting index for each field
+integer, allocatable :: rc2iv(:,:) ! translation table, from rcount to iv
 #endif
 !integer :: num_lev
 
@@ -423,10 +425,11 @@ INTEGER(KIND=JPIM) :: ISETW(KNSEND)
 INTEGER(KIND=JPIM),INTENT(IN) :: KVSET(KF_GP)
 INTEGER(KIND=JPIM) :: IFLDA(KF_GP,KNSEND)
 character (len=25) envalue
+INTEGER(KIND = MPI_COUNT_KIND) :: lb, extent
 !!!===========================================================================
 
-call getenv("OMPI_WANT_UMR",envalue)
-print *,myproc-1,': OMPI_WANT_UMR=',TRIM(envalue)
+!call getenv("OMPI_WANT_UMR",envalue)
+!print *,myproc-1,': OMPI_WANT_UMR=',TRIM(envalue)
 
 CALL GSTATS(1805,0)
 
@@ -619,7 +622,7 @@ allocate(sendtype(6,knsend))
 allocate(startsend(6,knsend))
 allocate(count_send(6,knsend))
 allocate(count_recv(6,knrecv))
-allocate(Dhor(knrecv))
+!allocate(Dhor(knrecv))
 allocate(tot_recv(6,knrecv))
 allocate(start_blk(knsend))
 allocate(blocklength(6,knsend))
@@ -777,15 +780,16 @@ DO INS=1,KNSEND
   ! Combine 1st and last dimensions of the array (PGPUV etc) into a single dimension (horizontal data), for one level (include some extra elements, that will be subtracted on the receiving side)
 #ifdef SEND_BY_LEVEL
          call mpi_type_vector(jend - jbeg+1,dims(1,iv),dims(1,iv)*dims(2,iv)*dims(3,iv),prec,sendtype(iv,ins),ierr)
-         typesz(iv,ins) = nproma * (jend-jbeg+1)
+         typesz(iv,ins) = dims(1,iv) * (jend-jbeg+1)
 #else
          call mpi_type_vector(jend - jbeg+1,dims(1,iv),dims(1,iv)*dims(2,iv)*dims(3,iv),prec,type_tmp1,ierr)
 ! Optionally, combine all levels into a single datatype
          call mpi_type_hvector(blocklength(iv,ins),1,stride,type_tmp1,sendtype(iv,ins),ierr)
-         typesz(iv,ins) = nproma * (jend-jbeg+1) * blocklength(iv,ins)
+         typesz(iv,ins) = dims(1,iv) * (jend-jbeg+1) * blocklength(iv,ins)
 #endif
+         
          call mpi_type_commit(sendtype(iv,ins),ierr)
-
+         
          if(iv .ne. 3) then
             count_send(iv,ins) = 1
          else
@@ -830,14 +834,16 @@ enddo
 
 #ifndef SEND_BY_LEVEL
 allocate(fstart(12,knrecv))
+allocate(rc2iv(18,knrecv))
 #endif
+
 
 tot_count = 0
 start_recv(1) = 1
 DO JNR=1,KNRECV
    IRECV=KRECV(jNR)
    id = nprcids(irecv)
-   Dhor(jnr) = (jdim(2,jnr) - jdim(1,jnr) +1) * nproma
+!   Dhor(jnr) = (jdim(2,jnr) - jdim(1,jnr) +1) * nproma
 
    rcount(jnr) = 1
 #ifndef SEND_BY_LEVEL
@@ -852,6 +858,7 @@ DO JNR=1,KNRECV
 #ifdef SEND_BY_LEVEL
          rcount(jnr) = rcount(jnr) + bl(iv,jnr)
 #else
+         rc2iv(rcount(jnr),jnr) = iv
          num_fld(rcount(jnr),jnr) = bl(iv,jnr)
          fstart(rcount(jnr)+1,jnr) = fstart(rcount(jnr),jnr)+num_fld(rcount(jnr),jnr)
          rcount(jnr) = rcount(jnr)+1
@@ -976,13 +983,14 @@ REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP(nproma,igppar,ngpblks)
 #ifdef DEBUG_COMM
 REAL(KIND=JPRB),OPTIONAL     :: PGPUV(nproma,iuvlev,iuvpar,ngpblks) 
 REAL(KIND=JPRB),OPTIONAL     :: PGP3A(nproma,igp3alev,igp3apar,ngpblks) 
+REAL(KIND=JPRB),OPTIONAL     :: PGP2(nproma,igp2par,ngpblks) 
 #else
 REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGPUV(nproma,iuvlev,iuvpar,ngpblks) 
 !REAL(KIND=JPRB),OPTIONAL     :: PGPUV(:,:,:,:) !,INTENT(IN)
 REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP3A(nproma,igp3alev,igp3apar,ngpblks) 
+REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP2(nproma,igp2par,ngpblks) 
 #endif
 REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP3B(nproma,igp3blev,igp3bpar,ngpblks)
-REAL(KIND=JPRB),OPTIONAL,INTENT(IN)     :: PGP2(nproma,igp2par,ngpblks) 
 
 ! Send buffer is no longer needed: in this version we use MPI Datatypes to copy data directly from the origina arrays
 !REAL(KIND=JPRB), ALLOCATABLE :: ZCOMBUFS(:,:)
@@ -1004,7 +1012,7 @@ integer :: req_id,tot_req_id
 integer :: id,ind,fcount,req_count,prec,irecv
 integer f,ff,n,n0,iv,np,s
 character(len=25) :: s1,s2,s3,str
-integer k,m,lev
+integer k,m,lev,l
 !============================================================================
 
 !     ------------------------------------------------------------------
@@ -1099,9 +1107,6 @@ DO INS=1,KNSEND
    ISEND=KSEND(INS)
    np = nprcids(isend) -1
    r = 1
-   if(start_blk(ins) .ne. 1) then
-      print *,myproc-1,': start_blk(',ins,')=',start_blk(ins)
-   endif
    if(LLINDER) then
 #ifdef SEND_BY_LEVEL
       do j=0,blocklength(1,ins)-1
@@ -1109,9 +1114,6 @@ DO INS=1,KNSEND
          j = 0
 #endif
          i2 = startsend(1,ins)+j
-         if(i2 < 1 .or. i2 > igppar) then
-            print *,myproc-1,': Error in trgtol_comm: second dimension is outside the boundaries', i2
-         endif
          call mpi_isend(pgp(1,i2,start_blk(ins)),1,sendtype(1,ins),np, &
            myproc*10000+r,mpi_comm_world,send_reqs(req_id),ierr)
          req_id = req_id +1
@@ -1127,9 +1129,6 @@ DO INS=1,KNSEND
          j=0
 #endif
          i2 = startsend(2,ins)+j
-         if(i2 < 1 .or. i2 > igppar) then
-            print *,myproc-1,': Error in trgtol_comm: second dimension is outside the boundaries', i2
-         endif
          call mpi_isend(pgp(1,i2,start_blk(ins)),1,sendtype(2,ins),np, &
               myproc*10000+r,mpi_comm_world,send_reqs(req_id),ierr)
          req_id = req_id +1
@@ -1145,9 +1144,6 @@ DO INS=1,KNSEND
          j=0
 #endif
          i2 = startsend(3,ins)+j
-         if(i2 < 1 .or. i2 > iuvlev) then
-            print *,myproc-1,': Error in trgtol_comm: second dimension is outside the boundaries', i2
-         endif
          call mpi_isend(pgpuv(1,i2,i,start_blk(ins)),1,sendtype(3,ins),np, &
               myproc*10000+r,mpi_comm_world,send_reqs(req_id),ierr)
          req_id = req_id +1
@@ -1164,9 +1160,6 @@ DO INS=1,KNSEND
          j=0
 #endif
          i2 = startsend(4,ins)+j
-         if(i2 < 1 .or. i2 > igp2par) then
-            print *,myproc-1,': Error in trgtol_comm: second dimension is outside the boundaries', i2
-         endif
          call mpi_isend(pgp2(1,i2,start_blk(ins)),1,sendtype(4,ins),np, &
               myproc*10000+r,mpi_comm_world,send_reqs(req_id),ierr)
          req_id = req_id +1
@@ -1183,9 +1176,6 @@ DO INS=1,KNSEND
          j=0
 #endif
          i2 = startsend(5,ins)+j
-         if(i2 < 1 .or. i2 > igp3alev) then
-            print *,myproc-1,': Error in trgtol_comm: second dimension is outside the boundaries', i2
-         endif
          call mpi_isend(pgp3a(1,i2,i,start_blk(ins)),1,sendtype(5,ins),np, &
              myproc*10000+r,mpi_comm_world,send_reqs(req_id),ierr)
          req_id = req_id +1
@@ -1202,9 +1192,6 @@ DO INS=1,KNSEND
          j=0
 #endif
          i2 = startsend(6,ins)+j
-         if(i2 < 1 .or. i2 > igp3blev) then
-            print *,myproc-1,': Error in trgtol_comm: second dimension is outside the boundaries', i2
-         endif
          call mpi_isend(pgp3b(1,i2,i,start_blk(ins)),1,sendtype(6,ins),np, &
                 myproc*10000+r,mpi_comm_world,send_reqs(req_id),ierr)
          req_id = req_id +1
@@ -1339,14 +1326,18 @@ DO JNR=1,tot_count
 !      f = mod(ind-1,rcount) +1   ! Group of fields
 !      inr = (ind-1)/rcount +1 
 
+      
       IRECV=KRECV(INR)    ! Source ID
 
 #ifdef SEND_BY_LEVEL
       n0 = 0
       s = f
 #else      
+      iv = rc2iv(f,inr)
+      l = tot_recv(iv,inr)/num_fld(f,inr)
       do ff=0,num_fld(f,inr)-1   ! Fields within the block
-         n0 = ff*Dhor(inr) ! Offset 
+!         n0 = ff*Dhor(inr) ! Offset 
+         n0 = ff*l  ! Offset 
          s = fstart(f,inr)+ff
 #endif
          do i=seg(1,inr),seg(2,inr)  ! Copy one segment (omitting cut elements)
