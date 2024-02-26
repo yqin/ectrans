@@ -10,7 +10,7 @@
 
 MODULE FTDIR_MOD
 CONTAINS
-SUBROUTINE FTDIR(PREEL,KFIELDS,KGL)
+SUBROUTINE FTDIR(PIN,PREEL,KFIELDS,KGL)
 
 
 !**** *FTDIR - Direct Fourier transform
@@ -48,12 +48,12 @@ SUBROUTINE FTDIR(PREEL,KFIELDS,KGL)
 
 USE PARKIND1  ,ONLY : JPIM, JPIB, JPRB
 
-USE TPM_DISTR       ,ONLY : D, MYSETW
+USE TPM_DISTR       ,ONLY : D, MYSETW,MYPROC
 USE TPM_GEOMETRY    ,ONLY : G
 USE TPM_FFT         ,ONLY : T, TB
 USE BLUESTEIN_MOD   ,ONLY : BLUESTEIN_FFT
 #ifdef WITH_FFTW
-USE TPM_FFTW        ,ONLY : TW, EXEC_FFTW
+USE TPM_FFTW        ,ONLY : TW, EXEC_FFTW, EXEC_EFFTW
 #endif
 USE TPM_DIM         ,ONLY : R
 !
@@ -61,12 +61,14 @@ USE TPM_DIM         ,ONLY : R
 IMPLICIT NONE
 
 INTEGER(KIND=JPIM),INTENT(IN)  :: KFIELDS,KGL
-REAL(KIND=JPRB), INTENT(INOUT) :: PREEL(:,:)
+REAL(KIND=JPRB), INTENT(IN) :: PIN(:,:)
+REAL(KIND=JPRB), INTENT(OUT) :: PREEL(:,:)
 
 INTEGER(KIND=JPIM) :: IGLG,IST,ILEN,IJUMP,JJ,JF,IST1
 INTEGER(KIND=JPIM) :: IOFF,IRLEN,ICLEN, ITYPE
 LOGICAL :: LL_ALL=.FALSE. ! T=do kfields ffts in one batch, F=do kfields ffts one at a time
-
+integer ila,i,j,d1,d2
+character(len=50) :: s1,s2,s3,str
 !     ------------------------------------------------------------------
 
 ITYPE=-1
@@ -103,7 +105,7 @@ IF (G%NLOEN(IGLG)>1) THEN
 #ifdef WITH_FFTW
   ELSE
 
-    CALL EXEC_FFTW(ITYPE,IRLEN,ICLEN,IOFF,KFIELDS,LL_ALL,PREEL)
+    CALL EXEC_EFFTW(ITYPE,IRLEN,ICLEN,IOFF,KFIELDS,LL_ALL,PIN,PREEL)
   
   ENDIF
 #endif
@@ -113,10 +115,37 @@ ENDIF
 IST1=1
 IF (G%NLOEN(IGLG)==1) IST1=0
 DO JJ=IST1,ILEN
-  DO JF=1,KFIELDS
-    PREEL(JF,IST+D%NSTAGTF(KGL)+JJ-1) = 0.0_JPRB
-  ENDDO
+   DO JF=1,KFIELDS
+      PREEL(JF,IST+D%NSTAGTF(KGL)+JJ-1) = 0.0_JPRB
+   ENDDO
 ENDDO
+
+!#define DEBUG_COMM
+
+#ifdef DEBUG_COMM
+
+d1 = size(PREEL,1)
+d2 = size(PREEL,2)
+
+
+s1 = 'new/preel/preel.'
+write(s2,9) kgl,myproc-1
+9 format(i0,'.',i0)
+s3 = trim(s2)
+str = trim(s1) // s3
+open(11,file=str,form='formatted',status='unknown',action='write')
+
+do i=IOFF,ICLEN+IOFF-1
+   do j=1,KFIELDS
+      write(11,10) j,i,preel(j,i)
+   enddo
+enddo
+
+10 format(i3,i8,' ',E18.10)
+
+close(11)
+#endif
+
 
 !     ------------------------------------------------------------------
 

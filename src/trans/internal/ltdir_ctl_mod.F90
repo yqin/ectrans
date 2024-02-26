@@ -47,6 +47,8 @@ USE TPM_DISTR       ,ONLY : D
 
 USE LTDIR_MOD       ,ONLY : LTDIR
 USE TRLTOM_MOD      ,ONLY : TRLTOM
+USE TPM_DISTR, ONLY : MYPROC
+USE TPM_DIM         ,ONLY : R
 !
 
 IMPLICIT NONE
@@ -62,7 +64,9 @@ INTEGER(KIND=JPIM),OPTIONAL,INTENT(IN) :: KFLDPTRUV(:)
 INTEGER(KIND=JPIM),OPTIONAL,INTENT(IN) :: KFLDPTRSC(:)
 
 INTEGER(KIND=JPIM) :: JM,IM,IBLEN,ILED2
-
+integer(KIND=JPIM) :: jmmaxtmp
+integer ila,i,j,d1,d2
+character(len=50) :: s1,s2,s3,str
 !     ------------------------------------------------------------------
 
 ! Transposition from Fourier space distribution to spectral space distribution
@@ -89,7 +93,9 @@ ILED2 = 2*KF_FS
 CALL GSTATS(1645,0)
 IF(KF_FS>0) THEN
 !$OMP PARALLEL DO SCHEDULE(DYNAMIC,1) PRIVATE(JM,IM)
-  DO JM=1,D%NUMP
+!   jmmaxtmp=min(D%NUMP,3)
+!   DO JM=1,jmmaxtmp
+   DO JM=1,D%NUMP
     IM = D%MYMS(JM)
     CALL LTDIR(IM,JM,KF_FS,KF_UV,KF_SCALARS,ILED2, &
      & PSPVOR,PSPDIV,PSPSCALAR,&
@@ -103,6 +109,62 @@ CALL GSTATS(1645,1)
 IF (.NOT.LALLOPERM) DEALLOCATE(FOUBUF)
 CALL GSTATS(103,1)
 
+!#define DEBUG_COMM
+
+#ifdef DEBUG_COMM
+
+d1 = size(pspvor,1)
+d2 = size(pspvor,2)
+print *,'Array dimensions in ltdir_ctl:',d1,d2
+
+
+s1 = 'new/pspvor.'
+write(s2,9) myproc-1
+9 format(i0)
+
+s3 = trim(s2)
+str = trim(s1) // s3
+open(11,file=str,form='formatted',status='unknown',action='write')
+
+!do i=1,R%NTMAX
+!   do j=1,KF_UV
+do i=1,d2
+   do j=1,d1
+      write(11,10) j,i,pspvor(j,i)
+   enddo
+enddo
+10 format(i3,i8,' ',E18.10)
+
+close(11)
+
+s1 = 'new/pspdiv.'
+write(s2,9) myproc-1
+s3 = trim(s2)
+str = trim(s1) // s3
+open(11,file=str,form='formatted',status='unknown',action='write')
+
+do i=1,d2
+   do j=1,d1
+      write(11,10) j,i,pspdiv(j,i)
+   enddo
+enddo
+
+close(11)
+
+s1 = 'new/pspsc2.'
+write(s2,9) myproc-1
+s3 = trim(s2)
+str = trim(s1) // s3
+open(11,file=str,form='formatted',status='unknown',action='write')
+
+do i=1,d2
+   write(11,12) i,pspsc2(1,i)
+enddo
+12 format(i8,E18.10)
+
+close(11)
+
+#endif
 !     -----------------------------------------------------------------
 
 END SUBROUTINE LTDIR_CTL

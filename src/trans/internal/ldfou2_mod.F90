@@ -85,10 +85,10 @@ IFLD = 4*KF_UV
 !*       1.1      U AND V
 
 DO JGL=ISL,R%NDGNH
-  DO J=1,IFLD
-    PAIA(J,JGL) = PAIA(J,JGL)*F%RACTHE(JGL)
-    PSIA(J,JGL) = PSIA(J,JGL)*F%RACTHE(JGL)
-  ENDDO
+DO J=1,IFLD
+      PAIA(J,JGL) = PAIA(J,JGL)*F%RACTHE(JGL)
+      PSIA(J,JGL) = PSIA(J,JGL)*F%RACTHE(JGL)
+   ENDDO
 ENDDO
 
 !     ------------------------------------------------------------------
