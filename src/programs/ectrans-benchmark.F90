@@ -1357,6 +1357,8 @@ subroutine gstats_labels
   call gstats_label(153, '   ', 'LTDIR_CTL      - L to M transposition')
   call gstats_label(157, '   ', 'FTINV_CTL      - L to G transposition')
   call gstats_label(158, '   ', 'FTDIR_CTL      - G to L transposition')
+  call gstats_label(161, '   ', 'FFTW_LOOP      - Loop in exec_efftw')
+  call gstats_label(162, '   ', 'UNPACK_LOOP    - Loop in trgtol_comm')
   call gstats_label(400, '   ', 'GSTATS         - GSTATS itself')
 
 end subroutine gstats_labels

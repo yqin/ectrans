@@ -66,7 +66,7 @@ REAL(KIND=JPRB), INTENT(OUT) :: PREEL(:,:)
 
 INTEGER(KIND=JPIM) :: IGLG,IST,ILEN,IJUMP,JJ,JF,IST1
 INTEGER(KIND=JPIM) :: IOFF,IRLEN,ICLEN, ITYPE
-LOGICAL :: LL_ALL=.FALSE. ! T=do kfields ffts in one batch, F=do kfields ffts one at a time
+LOGICAL :: LL_ALL=.TRUE. ! T=do kfields ffts in one batch, F=do kfields ffts one at a time
 integer ila,i,j,d1,d2
 character(len=50) :: s1,s2,s3,str
 !     ------------------------------------------------------------------
